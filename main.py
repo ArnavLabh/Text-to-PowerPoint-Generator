@@ -1,13 +1,11 @@
 from flask import send_from_directory
-@app.route('/')
-def index():
-    return send_from_directory('.', 'index.html')
 
-@app.route('/static/<path:filename>')
-def static_files(filename):
-    return send_from_directory('static', filename)
+# ...existing code...
+
+# Place these routes after app = Flask(__name__)
 import os
-from flask import Flask, request, send_file, jsonify
+
+from flask import Flask, request, send_file, jsonify, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import tempfile
@@ -21,6 +19,16 @@ CORS(app)
 UPLOAD_FOLDER = tempfile.gettempdir()
 ALLOWED_EXTENSIONS = {'pptx', 'potx'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Serve index.html
+@app.route('/')
+def index():
+    return send_from_directory('.', 'index.html')
+
+# Serve static files
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory('static', filename)
 
 # Helper to check allowed file
 
