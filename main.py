@@ -1,3 +1,11 @@
+from flask import send_from_directory
+@app.route('/')
+def index():
+    return send_from_directory('.', 'index.html')
+
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory('static', filename)
 import os
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
