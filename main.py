@@ -91,6 +91,7 @@ Respond with a JSON object in this format:\n{{\n  'title': 'Presentation Title',
         gemini_version = os.environ.get('GEMINI_VERSION', 'v1beta')
         gemini_base_url = os.environ.get('GEMINI_BASE_URL', f'https://generativelanguage.googleapis.com/{gemini_version}/models/{gemini_model}:generateContent')
         url = f'{gemini_base_url}?key={api_key}'
+        print(f"[Gemini] Using endpoint: {url}")
         headers = {'Content-Type': 'application/json'}
         data = {
             'contents': [{
@@ -98,6 +99,8 @@ Respond with a JSON object in this format:\n{{\n  'title': 'Presentation Title',
             }]
         }
         resp = requests.post(url, headers=headers, json=data)
+        if resp.status_code == 404:
+            raise Exception(f"Gemini API returned 404 Not Found. Endpoint tried: {url}. This usually means your API key is valid, but the Gemini API is not enabled for your Google Cloud project, or the model/version/endpoint is incorrect. Please check your Google Cloud Console and API settings.")
         resp.raise_for_status()
         content = resp.json()['candidates'][0]['content']['parts'][0]['text']
     else:
