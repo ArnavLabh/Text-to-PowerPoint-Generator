@@ -11,6 +11,14 @@ from werkzeug.utils import secure_filename
 import tempfile
 import requests
 import json
+
+import os
+import tempfile
+import json
+from flask import Flask, request, send_file, jsonify, send_from_directory
+from flask_cors import CORS
+from werkzeug.utils import secure_filename
+import requests
 from pptx import Presentation
 
 app = Flask(__name__)
@@ -20,64 +28,69 @@ UPLOAD_FOLDER = tempfile.gettempdir()
 ALLOWED_EXTENSIONS = {'pptx', 'potx'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Serve index.html
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
 
-# Serve static files
 @app.route('/static/<path:filename>')
 def static_files(filename):
     return send_from_directory('static', filename)
 
-# Helper to check allowed file
-
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
-# LLM API call for multiple providers
 def call_llm_api(text, guidance, api_key, provider):
     prompt = f"""
 Please analyze the following text and create a structured presentation outline. {guidance if guidance else ''}
 TEXT TO ANALYZE:\n{text}\n
 Respond with a JSON object in this format:\n{{\n  'title': 'Presentation Title',\n  'slides': [\n    {{'type': 'title', 'title': 'Main Title', 'subtitle': 'Subtitle'}},\n    {{'type': 'content', 'title': 'Slide Title', 'content': ['Bullet 1', 'Bullet 2']}}\n  ]\n}}
 """
+    provider = provider.lower()
     if provider == 'openai' or provider == 'aipipe':
+        base_url = os.environ.get('OPENAI_BASE_URL') if provider == 'openai' else os.environ.get('AIPIPE_BASE_URL', 'https://aipipe.org/openai/v1')
+        model = os.environ.get('OPENAI_MODEL', 'gpt-3.5-turbo')
+        if provider == 'aipipe':
+            model = os.environ.get('AIPIPE_MODEL', 'gpt-3.5-turbo')
+        if not base_url:
+            base_url = 'https://api.openai.com/v1'
         headers = {
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json'
         }
         data = {
-            'model': 'gpt-3.5-turbo',
+            'model': model,
             'messages': [
                 {'role': 'user', 'content': prompt}
             ],
             'temperature': 0.7,
             'max_tokens': 1500
         }
-        base_url = 'https://api.openai.com/v1' if provider == 'openai' else 'https://aipipe.org/openai/v1'
         resp = requests.post(f'{base_url}/chat/completions', headers=headers, json=data)
         resp.raise_for_status()
         content = resp.json()['choices'][0]['message']['content']
     elif provider == 'anthropic':
+        base_url = os.environ.get('ANTHROPIC_BASE_URL', 'https://api.anthropic.com/v1')
+        model = os.environ.get('ANTHROPIC_MODEL', 'claude-3-sonnet-20240229')
         headers = {
             'x-api-key': api_key,
             'Content-Type': 'application/json',
             'anthropic-version': '2023-06-01'
         }
         data = {
-            'model': 'claude-3-sonnet-20240229',
+            'model': model,
             'max_tokens': 1500,
             'messages': [
                 {'role': 'user', 'content': prompt}
             ]
         }
-        resp = requests.post('https://api.anthropic.com/v1/messages', headers=headers, json=data)
+        resp = requests.post(f'{base_url}/messages', headers=headers, json=data)
         resp.raise_for_status()
         content = resp.json()['content'][0]['text']
     elif provider == 'gemini':
-        url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}'
+        gemini_model = os.environ.get('GEMINI_MODEL', 'gemini-pro')
+        gemini_version = os.environ.get('GEMINI_VERSION', 'v1beta')
+        gemini_base_url = os.environ.get('GEMINI_BASE_URL', f'https://generativelanguage.googleapis.com/{gemini_version}/models/{gemini_model}:generateContent')
+        url = f'{gemini_base_url}?key={api_key}'
         headers = {'Content-Type': 'application/json'}
         data = {
             'contents': [{
@@ -87,31 +100,20 @@ Respond with a JSON object in this format:\n{{\n  'title': 'Presentation Title',
         resp = requests.post(url, headers=headers, json=data)
         resp.raise_for_status()
         content = resp.json()['candidates'][0]['content']['parts'][0]['text']
-    elif provider == 'aipipe':
-        # Example: AIPipe expects {"prompt": ...}
-        headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
-        data = {'prompt': prompt}
-        resp = requests.post('https://api.aipipe.ai/v1/generate', headers=headers, json=data)
-        resp.raise_for_status()
-        content = resp.json().get('result', '')
     else:
         raise Exception('Unsupported provider')
-    # Remove code block markers if present
     content = content.strip().replace('```json', '').replace('```', '')
     return json.loads(content)
 
-# PowerPoint generation
 def generate_pptx(slides_data, template_path=None):
     if template_path:
         prs = Presentation(template_path)
-        # Remove all slides from template
         while len(prs.slides) > 0:
             rId = prs.slides._sldIdLst[0].rId
             prs.part.drop_rel(rId)
             del prs.slides._sldIdLst[0]
     else:
         prs = Presentation()
-
     for idx, slide in enumerate(slides_data['slides']):
         if slide['type'] == 'title':
             layout = prs.slide_layouts[0]
@@ -129,7 +131,6 @@ def generate_pptx(slides_data, template_path=None):
     out_path = os.path.join(tempfile.gettempdir(), f'generated_{os.getpid()}.pptx')
     prs.save(out_path)
     return out_path
-
 
 @app.route('/generate', methods=['POST'])
 def generate():
