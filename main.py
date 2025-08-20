@@ -155,5 +155,3 @@ def generate():
         if template_path and os.path.exists(template_path):
             os.remove(template_path)
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
