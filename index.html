@@ -1,219 +1,559 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Text-to-PowerPoint Generator</title>
-    <link rel="stylesheet" href="static/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="GyaanSetu Deck — PPTX Generator (PPT-only variant)" />
+  <meta name="theme-color" content="#667eea" />
+  <title>GyaanSetu Deck — PPT Generator</title>
+
+  <!-- Fonts & icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+  <!-- Bootstrap (utilities/layout) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#0b1118; --panel:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.12);
+      --text:#e7eef6; --muted:#b6c3d4; --accent:#667eea; --chip:rgba(255,255,255,0.06);
+      --card-radius:14px;
+    }
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg:#f7f9fc; --panel:#fff; --border:#e6eaf0; --text:#0f1720; --muted:#5b6b80; --accent:#3a77ff; --chip:#f2f6ff;
+      }
+    }
+
+    html,body{ height:100%; margin:0; font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial; background:
+      radial-gradient(1200px 600px at 15% 5%, rgba(88,124,255,0.06), transparent 60%),
+      radial-gradient(900px 500px at 85% 0%, rgba(34,211,238,0.02), transparent 60%),
+      var(--bg); color:var(--text);
+    }
+
+    /* Top nav */
+    .top-nav{ display:flex; align-items:center; justify-content:space-between; padding:12px 18px; position:sticky; top:0; z-index:60;
+      border-bottom:1px solid var(--border); backdrop-filter: blur(6px) saturate(120%); background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+    }
+    .nav-brand{ display:flex; gap:10px; align-items:center; font-weight:700 }
+    .nav-brand .version{ font-size:.75rem; padding:.15rem .45rem; border-radius:999px; background:var(--chip); border:1px solid var(--border); color:var(--muted) }
+
+    .nav-controls{ display:flex; gap:8px; align-items:center }
+    .nav-btn{ background:var(--panel); color:var(--text); border:1px solid var(--border); padding:8px 10px; border-radius:10px; cursor:pointer }
+
+    /* App layout */
+    .app-wrap{ max-width:1200px; margin:18px auto; display:grid; grid-template-columns:300px 1fr; gap:14px; padding:0 12px; }
+    @media (max-width:980px){ .app-wrap{ grid-template-columns:1fr } }
+
+    /* Sidebar */
+    .sidebar{ background:var(--panel); border:1px solid var(--border); border-radius:var(--card-radius); padding:12px; height:calc(100vh - 122px); overflow:auto; box-shadow:0 8px 24px rgba(0,0,0,0.14) }
+    .sidebar h4{ margin:0 0 8px 0; font-size:1rem }
+    .tool-item{ padding:10px; border-radius:10px; border:1px solid var(--border); margin-bottom:8px; cursor:pointer; background:transparent; color:var(--text) }
+    .tool-item.active{ background:var(--chip) }
+
+    /* Main */
+    .main { min-height:560px }
+    .card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; color:var(--text); }
+    .muted { color:var(--muted) }
+
+    /* slide layout */
+    .slide-panel { display:grid; grid-template-columns:1fr 360px; gap:12px; margin-top:12px }
+    @media (max-width:980px){ .slide-panel{ grid-template-columns:1fr } }
+    textarea, input, select { background:transparent; color:var(--text); border:1px solid var(--border); padding:10px; border-radius:10px; width:100%; }
+    textarea { min-height:220px; resize:vertical; }
+
+    .btn-primary { background: linear-gradient(135deg, var(--accent), #22d3ee); border:none; color:#fff; font-weight:700; }
+    .btn-ghost { background:transparent; border:1px solid var(--border); color:var(--text); }
+    .chip { background:var(--chip); border:1px solid var(--border); border-radius:10px; padding:8px; color:var(--muted) }
+
+    .toast-wrap { position:fixed; right:18px; bottom:18px; z-index:1400; display:flex; flex-direction:column; gap:8px }
+    .toast { background:var(--panel); border:1px solid var(--border); padding:10px 12px; border-left:4px solid var(--accent); border-radius:8px; color:var(--text); box-shadow:0 10px 30px rgba(0,0,0,0.12) }
+    .toast.success { border-left-color:#22c55e }
+    .toast.error { border-left-color:#ef4444 }
+
+    /* small helpers */
+    .small-muted{ font-size:.9rem; color:var(--muted) }
+    [aria-live] { outline: none }
+  </style>
 </head>
 <body>
-    <div class="background-pattern"></div>
-    
-    <div class="container">
-        <header class="header">
-            <div class="logo-section">
-                <div class="logo-icon">
-                    <i class="fas fa-file-powerpoint"></i>
-                </div>
-                <div class="logo-text">
-                    <h1>Text-to-PowerPoint Generator</h1>
-                    <p class="subtitle">Transform your text into beautiful presentations with AI</p>
-                </div>
-            </div>
-        </header>
-
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-magic"></i>
-                </div>
-                <h3>AI-Powered</h3>
-                <p>Intelligently structures your content into professional slides</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-palette"></i>
-                </div>
-                <h3>Template Support</h3>
-                <p>Upload your own templates or use our beautiful defaults</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-shield-alt"></i>
-                </div>
-                <h3>Privacy First</h3>
-                <p>Your data and API keys are never stored or logged</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-bolt"></i>
-                </div>
-                <h3>Lightning Fast</h3>
-                <p>Generate presentations in seconds, not hours</p>
-            </div>
-        </div>
-
-        <div class="main-card">
-            <form id="ppt-form" autocomplete="off">
-                <div class="form-section">
-                    <label for="input-text">
-                        <i class="fas fa-file-text"></i>
-                        Your Content <span class="required">*</span>
-                    </label>
-                    <div class="textarea-wrapper">
-                        <textarea 
-                            id="input-text" 
-                            name="input-text" 
-                            rows="8" 
-                            required 
-                            placeholder="Paste your text, markdown, research paper, meeting notes, or any content you want to turn into a presentation..."
-                        ></textarea>
-                        <div class="textarea-footer">
-                            <small><i class="fas fa-info-circle"></i> Supports markdown, prose, and bullet points</small>
-                            <div class="char-counter">
-                                <span id="char-count">0</span> characters
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-section">
-                    <label for="guidance">
-                        <i class="fas fa-compass"></i>
-                        Presentation Guidance <span class="optional">(optional)</span>
-                    </label>
-                    <input 
-                        type="text" 
-                        id="guidance" 
-                        name="guidance" 
-                        placeholder="e.g., 'investor pitch deck', 'educational for students', 'corporate training'"
-                    >
-                    <small><i class="fas fa-lightbulb"></i> Describe the tone, structure, or intended audience</small>
-                </div>
-
-                <div class="form-section">
-                    <label>
-                        <i class="fas fa-robot"></i>
-                        AI Provider <span class="required">*</span>
-                    </label>
-                    <div class="provider-grid">
-                        <div class="provider-option">
-                            <input type="radio" id="openai" name="provider" value="openai" checked>
-                            <label for="openai">
-                                <div class="provider-logo">🤖</div>
-                                <span>OpenAI</span>
-                                <div class="provider-badge">GPT-4</div>
-                            </label>
-                        </div>
-                        <div class="provider-option">
-                            <input type="radio" id="anthropic" name="provider" value="anthropic">
-                            <label for="anthropic">
-                                <div class="provider-logo">🧠</div>
-                                <span>Anthropic</span>
-                                <div class="provider-badge">Claude</div>
-                            </label>
-                        </div>
-                        <div class="provider-option">
-                            <input type="radio" id="gemini" name="provider" value="gemini">
-                            <label for="gemini">
-                                <div class="provider-logo">💎</div>
-                                <span>Gemini</span>
-                                <div class="provider-badge">Pro</div>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-section">
-                    <label for="api-key">
-                        <i class="fas fa-key"></i>
-                        API Key <span class="required">*</span>
-                    </label>
-                    <div class="input-wrapper">
-                        <input 
-                            type="password" 
-                            id="api-key" 
-                            name="api-key" 
-                            required 
-                            placeholder="Enter your API key"
-                        >
-                        <button type="button" class="toggle-password" id="toggle-password">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </div>
-                    <small><i class="fas fa-lock"></i> Your key is used only for this session and never stored</small>
-                </div>
-
-                <div class="form-section">
-                    <label for="pptx-file">
-                        <i class="fas fa-upload"></i>
-                        PowerPoint Template <span class="optional">(optional)</span>
-                    </label>
-                    <div class="file-upload-area" id="file-upload-area">
-                        <input type="file" id="pptx-file" name="pptx-file" accept=".pptx,.potx">
-                        <div class="file-upload-content">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <p>Drop your template here or <span class="browse-link">browse files</span></p>
-                            <small>Supports .pptx and .potx files</small>
-                        </div>
-                        <div class="file-selected" id="file-selected" style="display: none;">
-                            <i class="fas fa-file-powerpoint"></i>
-                            <span class="file-name"></span>
-                            <button type="button" class="remove-file" id="remove-file">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <button type="submit" id="generate-btn" class="generate-btn">
-                    <span class="btn-text">
-                        <i class="fas fa-magic"></i>
-                        Generate Presentation
-                    </span>
-                    <div class="btn-loader" style="display: none;">
-                        <div class="spinner"></div>
-                        <span>Generating...</span>
-                    </div>
-                </button>
-            </form>
-
-            <div id="download-section" class="download-section" style="display:none;">
-                <div class="success-message">
-                    <i class="fas fa-check-circle"></i>
-                    <h3>Presentation Generated Successfully!</h3>
-                    <p>Your PowerPoint presentation is ready for download.</p>
-                </div>
-                <button id="download-btn" class="download-btn">
-                    <i class="fas fa-download"></i>
-                    Download Presentation
-                </button>
-            </div>
-
-            <div id="status" class="status-message"></div>
-        </div>
-
-        <footer class="footer">
-            <div class="footer-content">
-                <p>
-                    <i class="fas fa-code"></i>
-                    MIT Licensed • 
-                    <a href="https://github.com/ArnavLabh/Text-to-PowerPoint-Generator" target="_blank">
-                        <i class="fab fa-github"></i>
-                        View on GitHub
-                    </a>
-                </p>
-                <p class="footer-note">
-                    Made with <i class="fas fa-heart"></i> for better presentations
-                </p>
-            </div>
-        </footer>
+  <!-- Top nav -->
+  <header class="top-nav" role="banner">
+    <div class="nav-brand">
+      <i class="fas fa-brain"></i>
+      <div style="display:flex;flex-direction:column;line-height:1">
+        <span class="brand-text">GyaanSetu Deck</span>
+        <small class="muted">PPTX Generator</small>
+      </div>
+      <span class="version">v2.0</span>
     </div>
 
-    <script src="static/main.js"></script>
+    <div class="nav-controls">
+      <button id="theme-toggle" class="nav-btn" title="Toggle theme"><i class="fas fa-moon"></i></button>
+      <button id="settings-open" class="nav-btn" title="Settings"><i class="fas fa-cog"></i></button>
+    </div>
+  </header>
+
+  <div class="app-wrap" role="main">
+    <!-- Sidebar -->
+    <aside class="sidebar" aria-label="Tools & history">
+      <h4>Tool</h4>
+      <div id="toolSlides" class="tool-item active" role="button" tabindex="0"><i class="fas fa-file-powerpoint"></i> Slide Generator</div>
+
+      <h4 style="margin-top:10px">History</h4>
+      <div id="historyList" style="display:flex;flex-direction:column;gap:8px;min-height:120px"></div>
+
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button id="export-history" class="btn btn-ghost" title="Export history"><i class="fas fa-download"></i></button>
+        <button id="clear-history" class="btn btn-ghost" title="Clear history"><i class="fas fa-trash"></i></button>
+      </div>
+
+      <div style="margin-top:12px" class="small-muted">Local history stores only metadata (no API keys / files).</div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:start;gap:12px">
+          <div>
+            <h2 style="margin:0">Auto-generate a Presentation</h2>
+            <div class="muted" style="margin-top:6px">Paste text / Markdown, choose provider & model, optionally upload a template and download the generated .pptx</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="download-last" class="btn btn-ghost" disabled title="Download last"><i class="fas fa-download"></i> Download last</button>
+            <button id="clear-form" class="btn btn-ghost" title="Clear form"><i class="fas fa-eraser"></i></button>
+          </div>
+        </div>
+
+        <!-- slide generator form -->
+        <div class="slide-panel">
+          <!-- left: content -->
+          <section class="card" style="padding:14px">
+            <h4 style="margin-top:0">Content</h4>
+            <label for="text">Your Text or Markdown</label>
+            <textarea id="text" placeholder="Paste or type your content here..."></textarea>
+
+            <div style="display:grid;grid-template-columns:1fr 140px;gap:10px;margin-top:10px">
+              <div>
+                <label for="guidance">One-line guidance (optional)</label>
+                <input id="guidance" type="text" placeholder="e.g., investor pitch, tech summary">
+              </div>
+              <div>
+                <label for="num_slides">Number of slides</label>
+                <input id="num_slides" type="number" min="1" max="40" value="10">
+                <div class="small-muted">1–40</div>
+              </div>
+            </div>
+
+            <label for="template" style="margin-top:10px">Template (.pptx/.potx) — optional</label>
+            <input id="template" type="file" accept=".pptx,.potx">
+
+            <label style="margin-top:10px"><input id="reuse_images" type="checkbox"> Reuse images from template (safe placement)</label>
+          </section>
+
+          <!-- right: provider & controls -->
+          <aside class="card" style="padding:14px">
+            <h4 style="margin-top:0">Provider & Settings</h4>
+
+            <label for="provider">LLM Provider</label>
+            <select id="provider">
+              <option value="aipipe">AI Pipe (OpenRouter)</option>
+              <option value="openai">OpenAI</option>
+              <option value="gemini">Gemini (Google)</option>
+              <option value="anthropic">Anthropic (Claude)</option>
+            </select>
+
+            <label for="api_key" style="margin-top:8px">API Key / Token</label>
+            <div style="display:flex;gap:8px">
+              <input id="api_key" type="password" placeholder="Paste your key/token..." style="flex:1">
+              <button id="paste_key" class="nav-btn" title="Paste from clipboard"><i class="fas fa-clipboard"></i></button>
+            </div>
+
+            <label for="model" style="margin-top:8px">Model</label>
+            <select id="model"></select>
+            <div id="model_hint" class="small-muted" style="margin-top:6px">Select provider to view models</div>
+
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button id="generate" class="btn btn-primary" disabled><i class="fas fa-magic"></i> Generate .pptx</button>
+              <button id="btn_clear" class="btn btn-ghost">Clear</button>
+            </div>
+
+            <div id="status" aria-live="polite" class="small-muted" style="margin-top:10px"></div>
+          </aside>
+        </div>
+
+        <!-- output preview -->
+        <div id="output" style="margin-top:12px"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- settings dialog -->
+  <div id="settings" style="display:none;position:fixed;inset:0;place-items:center;z-index:1500;backdrop-filter: blur(4px);">
+    <div style="background:var(--panel);border:1px solid var(--border);padding:16px;border-radius:12px;max-width:720px;margin:40px auto;color:var(--text)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Settings</h3>
+        <button id="close_settings" class="nav-btn"><i class="fas fa-times"></i></button>
+      </div>
+      <div style="margin-top:10px">
+        <label>Max history items</label>
+        <input id="max_history" type="number" min="10" max="1000" value="200" style="width:120px">
+      </div>
+      <div style="margin-top:12px; text-align:right">
+        <button id="save_settings" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- performance & toasts -->
+  <div id="perf" style="position:fixed;left:18px;bottom:18px;background:var(--panel);border:1px solid var(--border);padding:10px;border-radius:10px;color:var(--muted);z-index:1400">
+    <div style="font-weight:700">Performance</div>
+    <div style="font-size:.9rem">Response: <span id="perf_time">0ms</span></div>
+    <div style="font-size:.9rem">API calls: <span id="perf_calls">0</span></div>
+  </div>
+
+  <div id="toasts" class="toast-wrap" aria-live="polite"></div>
+
+  <!-- bootstrap -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+  /* ========= PPT-only GyaanSetu UI — Single file =========
+     - Compatible with /generate (your app.py)
+     - Expanded model lists per provider
+     - All UI functions implemented: validate, paste key, model list, generate (fetch -> blob), history, download
+  ====================================================== */
+
+  (function(){
+    // Elements
+    const providerEl = document.getElementById('provider');
+    const modelEl = document.getElementById('model');
+    const modelHintEl = document.getElementById('model_hint');
+    const apiKeyEl = document.getElementById('api_key');
+    const pasteKeyBtn = document.getElementById('paste_key');
+
+    const textEl = document.getElementById('text');
+    const guidanceEl = document.getElementById('guidance');
+    const numSlidesEl = document.getElementById('num_slides');
+    const templateEl = document.getElementById('template');
+    const reuseImagesEl = document.getElementById('reuse_images');
+
+    const generateBtn = document.getElementById('generate');
+    const clearBtn = document.getElementById('btn_clear');
+    const clearFormBtn = document.getElementById('clear-form');
+    const statusEl = document.getElementById('status');
+    const outputEl = document.getElementById('output');
+    const downloadLastBtn = document.getElementById('download-last');
+
+    const historyListEl = document.getElementById('historyList');
+    const exportHistoryBtn = document.getElementById('export-history');
+    const clearHistoryBtn = document.getElementById('clear-history');
+    const maxHistoryEl = document.getElementById('max_history');
+
+    const toastsEl = document.getElementById('toasts');
+    const perfTimeEl = document.getElementById('perf_time');
+    const perfCallsEl = document.getElementById('perf_calls');
+
+    const settingsOpenBtn = document.getElementById('settings-open');
+    const settingsModal = document.getElementById('settings');
+    const closeSettingsBtn = document.getElementById('close_settings');
+    const saveSettingsBtn = document.getElementById('save_settings');
+
+    const themeToggle = document.getElementById('theme-toggle');
+
+    // State
+    const HISTORY_KEY = 'gyaan_deck_history_v1';
+    const STATE_KEY = 'gyaan_deck_state_v1';
+    let lastBlobUrl = null;
+    let apiCalls = 0;
+
+    // Models (expanded lists)
+    const MODELS = {
+      openai: [
+        {id:'gpt-4o-mini', label:'gpt-4o-mini'},
+        {id:'gpt-4o', label:'gpt-4o'},
+        {id:'gpt-4.1-nano', label:'gpt-4.1-nano'},
+        {id:'gpt-4o-realtime-preview', label:'gpt-4o-realtime-preview'},
+        {id:'gpt-4.1', label:'gpt-4.1'}
+      ],
+      aipipe: [
+        {id:'gpt-4o-mini', label:'gpt-4o-mini'},
+        {id:'gpt-4o', label:'gpt-4o'},
+        {id:'gpt-4.1-nano', label:'gpt-4.1-nano'}
+      ],
+      gemini: [
+        {id:'gemini-1.5-flash', label:'gemini-1.5-flash'},
+        {id:'gemini-2.1', label:'gemini-2.1'},
+        {id:'gemini-2.5-flash', label:'gemini-2.5-flash'},
+        {id:'gemini-2.5-pro', label:'gemini-2.5-pro'}
+      ],
+      anthropic: [
+        {id:'claude-2.1', label:'claude-2.1'},
+        {id:'claude-3-5-sonnet', label:'claude-3-5-sonnet'},
+        {id:'claude-3-5-sonnet-latest', label:'claude-3-5-sonnet-latest'},
+        {id:'claude-3', label:'claude-3'}
+      ]
+    };
+
+    // Helpers
+    function toast(msg, kind='info') {
+      const el = document.createElement('div');
+      el.className = 'toast ' + (kind==='success'?'success': kind==='error'?'error':'');
+      el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div>${msg}</div><button aria-label="close" style="background:none;border:none;color:var(--muted);cursor:pointer">&times;</button></div>`;
+      toastsEl.appendChild(el);
+      const closeBtn = el.querySelector('button');
+      closeBtn.onclick = ()=> el.remove();
+      setTimeout(()=> el.remove(), 4500);
+    }
+
+    function readHistory() {
+      try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch(e){ return []; }
+    }
+    function writeHistory(arr) { localStorage.setItem(HISTORY_KEY, JSON.stringify(arr.slice(0, Number(maxHistoryEl.value||200)))); }
+    function addHistory(meta) {
+      const arr = readHistory(); arr.unshift(meta); writeHistory(arr); renderHistory();
+    }
+
+    function renderHistory() {
+      const arr = readHistory();
+      historyListEl.innerHTML = '';
+      if (!arr.length) {
+        historyListEl.innerHTML = '<div class="small-muted">No generations yet</div>'; return;
+      }
+      for (const h of arr) {
+        const el = document.createElement('div');
+        el.className = 'card';
+        el.style.display = 'flex'; el.style.justifyContent = 'space-between'; el.style.alignItems = 'center';
+        el.style.padding = '8px'; el.style.gap = '8px';
+        el.innerHTML = `<div><strong>${escapeHtml(h.title||'Deck')}</strong><div class="small-muted">${new Date(h.ts).toLocaleString()} • ${h.model || ''} • ${h.slides} slides</div></div>
+                        <div style="display:flex;gap:8px">
+                          <button class="btn btn-ghost btn-sm" data-id="${h.ts}" data-act="recreate"><i class="fas fa-repeat"></i></button>
+                          <button class="btn btn-ghost btn-sm" data-id="${h.ts}" data-act="download"><i class="fas fa-download"></i></button>
+                        </div>`;
+        historyListEl.appendChild(el);
+
+        el.querySelector('[data-act="recreate"]').onclick = () => {
+          genLoadMeta(h);
+          toast('Parameters loaded. Press Generate to re-create.', 'success');
+        };
+        el.querySelector('[data-act="download"]').onclick = () => {
+          // Recreate -> download (makes a new server request)
+          genLoadMeta(h);
+          generate(); // re-generate and auto-enable download
+          toast('Recreating deck for download...', 'info');
+        };
+      }
+    }
+
+    function escapeHtml(s='') { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    // persist some small state: api key prefix and max history
+    function loadState() {
+      try {
+        const s = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
+        if (s.apiKeyPrefix) apiKeyEl.value = s.apiKeyPrefix;
+        if (s.maxHistory) maxHistoryEl.value = s.maxHistory;
+      } catch {}
+    }
+    function saveState() {
+      try {
+        const s = { apiKeyPrefix: apiKeyEl.value ? apiKeyEl.value.slice(0,32) : '', maxHistory: Number(maxHistoryEl.value||200) };
+        localStorage.setItem(STATE_KEY, JSON.stringify(s));
+      } catch {}
+    }
+    window.addEventListener('beforeunload', saveState);
+
+    // Provider -> models
+    function applyModels() {
+      const p = providerEl.value;
+      modelEl.innerHTML = '';
+      (MODELS[p] || []).forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id; opt.textContent = m.label;
+        modelEl.appendChild(opt);
+      });
+      modelHintEl.textContent = p === 'openai' ? 'OpenAI models' : p === 'aipipe' ? 'AI Pipe (OpenRouter) models' : p === 'anthropic' ? 'Anthropic models' : 'Gemini models';
+    }
+
+    providerEl.addEventListener('change', () => { applyModels(); validate(); });
+
+    pasteKeyBtn.addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        apiKeyEl.value = (text || '').trim();
+        toast('API key pasted', 'success');
+        validate();
+      } catch (e) { toast('Clipboard access denied', 'error'); }
+    });
+
+    // validation
+    function validate() {
+      const ok = (textEl.value || '').trim().length > 10 &&
+                 (apiKeyEl.value || '').trim().length > 6 &&
+                 (numSlidesEl.value && Number(numSlidesEl.value)>=1 && Number(numSlidesEl.value)<=40);
+      generateBtn.disabled = !ok;
+      return ok;
+    }
+    [textEl, apiKeyEl, numSlidesEl].forEach(el => el.addEventListener('input', validate));
+    applyModels();
+    loadState();
+    renderHistory();
+    validate();
+
+    // clear form
+    clearBtn.addEventListener('click', () => {
+      textEl.value = ''; guidanceEl.value = ''; numSlidesEl.value = 10; templateEl.value = ''; reuseImagesEl.checked = false; statusEl.textContent = ''; validate();
+    });
+    clearFormBtn.addEventListener('click', () => { clearBtn.click(); });
+
+    // download last
+    downloadLastBtn.addEventListener('click', () => {
+      if (!lastBlobUrl) { toast('No generated file available. Generate first.', 'error'); return; }
+      const a = document.createElement('a'); a.href = lastBlobUrl; a.download = 'generated.pptx'; a.click();
+    });
+
+    // generate function: posts to /generate
+    async function generate() {
+      if (!validate()) { toast('Please complete required fields', 'error'); return; }
+      setBusy(true);
+      statusEl.textContent = 'Generating…';
+      const start = performance.now(); apiCalls++; perfCallsEl.textContent = apiCalls;
+
+      try {
+        const fd = new FormData();
+        fd.append('text', (textEl.value||'').trim());
+        fd.append('guidance', (guidanceEl.value||'').trim());
+        fd.append('provider', providerEl.value);
+        fd.append('api_key', apiKeyEl.value);
+        fd.append('model', modelEl.value);
+        fd.append('num_slides', numSlidesEl.value);
+        fd.append('reuse_images', reuseImagesEl.checked ? 'true' : 'false');
+        if (templateEl.files && templateEl.files[0]) fd.append('template', templateEl.files[0]);
+
+        const resp = await fetch('/generate', { method:'POST', body: fd });
+        if (!resp.ok) {
+          const text = await resp.text().catch(()=> '');
+          let hint = '';
+          if (resp.status === 401) hint = ' — invalid/missing key for provider';
+          else if (resp.status === 429) hint = ' — rate limit / quota';
+          else if (/model|not\s*found|unsupported/i.test(text)) hint = ' — model not allowed for your key';
+          throw new Error(`Server ${resp.status}${hint} ${text}`);
+        }
+        const blob = await resp.blob();
+        // create blob URL
+        if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+        lastBlobUrl = URL.createObjectURL(blob);
+        downloadLastBtn.disabled = false;
+
+        // metadata -> add history (NO key stored)
+        const meta = {
+          ts: Date.now(),
+          title: (guidanceEl.value || textEl.value.slice(0,80)).replace(/\n/g,' '),
+          slides: Number(numSlidesEl.value),
+          provider: providerEl.value,
+          model: modelEl.value,
+          text: (textEl.value||'').slice(0,200), // small preview
+        };
+        addHistory(meta);
+
+        // output preview
+        renderOutput(meta);
+
+        statusEl.textContent = 'Ready — click Download last';
+        toast('Presentation generated', 'success');
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = 'Error: ' + (err.message || 'Unknown');
+        toast('Generate failed: ' + (err.message || 'Unknown'), 'error');
+      } finally {
+        const elapsed = Math.round(performance.now() - start);
+        perfTimeEl.textContent = elapsed + 'ms';
+        setBusy(false);
+      }
+    }
+
+    function setBusy(b) {
+      generateBtn.disabled = b;
+      generateBtn.innerHTML = b ? '<i class="fas fa-circle-notch fa-spin"></i> Generating...' : '<i class="fas fa-magic"></i> Generate .pptx';
+    }
+
+    function renderOutput(meta) {
+      outputEl.innerHTML = '';
+      const box = document.createElement('div');
+      box.className = 'card';
+      box.style.display = 'flex'; box.style.justifyContent = 'space-between'; box.style.alignItems = 'center';
+      box.style.padding = '10px';
+      box.innerHTML = `<div><strong>${escapeHtml(meta.title)}</strong><div class="small-muted">${new Date(meta.ts).toLocaleString()} • ${meta.slides} slides • ${meta.model}</div></div>
+                       <div style="display:flex;gap:8px"><button id="dl-now" class="btn btn-primary small"><i class="fas fa-download"></i> Download</button></div>`;
+      outputEl.appendChild(box);
+      document.getElementById('dl-now').onclick = () => {
+        if (!lastBlobUrl) { toast('No generated file available', 'error'); return; }
+        const a = document.createElement('a'); a.href = lastBlobUrl; a.download = 'generated.pptx'; a.click();
+      };
+    }
+
+    // load metadata into form from history
+    function genLoadMeta(h) {
+      textEl.value = h.text || textEl.value;
+      guidanceEl.value = h.guidance || guidanceEl.value;
+      numSlidesEl.value = h.slides || numSlidesEl.value;
+      providerEl.value = h.provider || providerEl.value;
+      applyModels();
+      modelEl.value = h.model || modelEl.value;
+      validate();
+    }
+
+    // history actions
+    exportHistoryBtn.addEventListener('click', () => {
+      const arr = readHistory();
+      const blob = new Blob([JSON.stringify(arr, null, 2)], { type:'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'gyaan_deck_history.json'; a.click();
+      URL.revokeObjectURL(url);
+    });
+    clearHistoryBtn.addEventListener('click', () => { writeHistory([]); renderHistory(); toast('History cleared', 'success'); });
+
+    // settings modal
+    settingsOpenBtn.addEventListener('click', () => settingsModal.style.display = 'grid');
+    closeSettingsBtn.addEventListener('click', () => settingsModal.style.display = 'none');
+    saveSettingsBtn.addEventListener('click', () => {
+      saveState(); settingsModal.style.display = 'none'; toast('Settings saved', 'success');
+    });
+
+    // theme toggle: toggles color-scheme
+    themeToggle.addEventListener('click', () => {
+      const cs = document.documentElement.style.colorScheme || '';
+      if (cs === 'dark') document.documentElement.style.colorScheme = 'light';
+      else if (cs === 'light') document.documentElement.style.colorScheme = '';
+      else document.documentElement.style.colorScheme = 'dark';
+      toast('Theme toggled', 'info');
+    });
+
+    // keyboard: Ctrl/Cmd+G generate
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
+        e.preventDefault(); if (!generateBtn.disabled) generate();
+      }
+    });
+
+    // wire generate button
+    generateBtn.addEventListener('click', generate);
+
+    // small util functions
+    function escapeHtml(s='') { return (''+s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    // initial
+    (function init() {
+      loadState();
+      applyModels();
+      renderHistory();
+    })();
+
+    // Expose validate to global for debugging if needed
+    window.__gyaan_validate = validate;
+  })();
+  </script>
 </body>
 </html>
